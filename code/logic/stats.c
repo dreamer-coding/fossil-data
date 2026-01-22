@@ -101,7 +101,7 @@ fossil_data_stats_status_t fossil_data_stats_mean(
     return FOSSIL_DATA_STATS_OK;
 }
 
-fossil_data_stats_status_tfossil_data_stats_variance(
+fossil_data_stats_status_t fossil_data_stats_variance(
     const double *x,
     size_t n,
     double *out) {
