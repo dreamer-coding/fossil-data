@@ -25,8 +25,7 @@
 #ifndef FOSSIL_DATA_STATS_H
 #define FOSSIL_DATA_STATS_H
 
-#include <stddef.h>
-#include "fossil/data/matrix.h"
+#include "types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,96 +33,58 @@ extern "C" {
 
 
 /* ============================================================================
- * Status Codes
+ * Opaque Stats Context
  * ============================================================================
  */
-typedef enum {
-    FOSSIL_DATA_STATS_OK = 0,
-    FOSSIL_DATA_STATS_ERR_NULL,
-    FOSSIL_DATA_STATS_ERR_EMPTY,
-    FOSSIL_DATA_STATS_ERR_ALLOC,
-    FOSSIL_DATA_STATS_ERR_DIM_MISMATCH
-} fossil_data_stats_status_t;
+
+typedef struct fossil_data_stats fossil_data_stats_t;
 
 /* ============================================================================
- * Streaming Accumulator
+ * Creation / Destruction
  * ============================================================================
  */
-typedef struct {
-    size_t count;
-    double mean;
-    double m2;   /* sum of squares of differences from the mean */
-} fossil_data_stats_accumulator_t;
+
+/* id examples:
+ *   "mean"
+ *   "median"
+ *   "variance"
+ *   "stddev"
+ *   "correlation"
+ *   "histogram"
+ */
+fossil_data_stats_t *
+fossil_data_stats_create(fossil_data_id_t id);
+
+void
+fossil_data_stats_destroy(fossil_data_stats_t *stats);
 
 /* ============================================================================
- * Accumulator API (Welford)
+ * Configuration
  * ============================================================================
  */
-void fossil_data_stats_accumulator_init(
-    fossil_data_stats_accumulator_t *acc
-);
 
-void fossil_data_stats_accumulator_push(
-    fossil_data_stats_accumulator_t *acc,
-    double value
-);
-
-double fossil_data_stats_accumulator_mean(
-    const fossil_data_stats_accumulator_t *acc
-);
-
-double fossil_data_stats_accumulator_variance(
-    const fossil_data_stats_accumulator_t *acc
-);
-
-double fossil_data_stats_accumulator_stddev(
-    const fossil_data_stats_accumulator_t *acc
+/* key examples:
+ *   "bins"
+ *   "axis"
+ *   "ddof"
+ */
+fossil_data_status_t
+fossil_data_stats_set(
+    fossil_data_stats_t *stats,
+    fossil_data_id_t     key,
+    fossil_data_id_t     value
 );
 
 /* ============================================================================
- * Vector Statistics
- * ============================================================================
- */
-fossil_data_stats_status_t fossil_data_stats_mean(
-    const double *x,
-    size_t n,
-    double *out
-);
-
-fossil_data_stats_status_t fossil_data_stats_variance(
-    const double *x,
-    size_t n,
-    double *out
-);
-
-fossil_data_stats_status_t fossil_data_stats_stddev(
-    const double *x,
-    size_t n,
-    double *out
-);
-
-fossil_data_stats_status_t fossil_data_stats_minmax(
-    const double *x,
-    size_t n,
-    double *out_min,
-    double *out_max
-);
-
-/* ============================================================================
- * Matrix Statistics
+ * Compute
  * ============================================================================
  */
 
-/* Column-wise means: result is (1 x cols) */
-fossil_data_stats_status_t fossil_data_stats_matrix_column_mean(
-    const fossil_data_matrix_t *m,
-    fossil_data_matrix_t **out
-);
-
-/* Covariance matrix: (cols x cols) */
-fossil_data_stats_status_t fossil_data_stats_matrix_covariance(
-    const fossil_data_matrix_t *m,
-    fossil_data_matrix_t **out
+fossil_data_status_t
+fossil_data_stats_compute(
+    fossil_data_stats_t      *stats,
+    const fossil_data_buffer_t *input,
+    fossil_data_buffer_t       *output
 );
 
 #ifdef __cplusplus
