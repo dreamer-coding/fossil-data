@@ -24,8 +24,6 @@
  */
 #include "fossil/data/prob.h"
 
-#include "fossil_data_prob.h"
-
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
