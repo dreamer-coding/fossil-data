@@ -26,6 +26,11 @@
 #define FOSSIL_DATA_FRAMEWORK_H
 
 // Include the necessary headers
-#include "matrix.h"
+#include "transform.h"
+#include "series.h"
+#include "stats.h"
+#include "plot.h"
+#include "prob.h"
+#include "ml.h"
 
 #endif /* FOSSIL_DATA_FRAMEWORK_H */
