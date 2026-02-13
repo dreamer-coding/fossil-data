@@ -25,99 +25,59 @@
 #ifndef FOSSIL_DATA_PLOT_H
 #define FOSSIL_DATA_PLOT_H
 
-#include "types.h"
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* ============================================================================
- * Opaque Plot
- * ============================================================================
+/**
+ * @file fossil_data_plot.h
+ * @brief Lightweight plotting utilities.
+ *
+ * Supports line plots and histograms using terminal or ASCII-based visualization.
+ *
+ * Supported type string IDs:
+ *   - "i32", "i64", "f32", "f64"
+ *
+ * Title string IDs can be arbitrary cstrings describing the plot.
  */
 
-typedef struct fossil_data_plot fossil_data_plot_t;
-
-/* ============================================================================
- * Creation / Destruction
- * ============================================================================
- */
-
-/* id examples:
- *   "line"
- *   "scatter"
- *   "bar"
- *   "histogram"
- *   "heatmap"
- */
-fossil_data_plot_t *
-fossil_data_plot_create(fossil_data_id_t id);
-
-void
-fossil_data_plot_destroy(fossil_data_plot_t *plot);
-
-/* ============================================================================
- * Configuration
- * ============================================================================
- */
-
-/* key examples:
- *   "title"
- *   "xlabel"
- *   "ylabel"
- *   "width"
- *   "height"
- *   "color"
- */
-fossil_data_status_t
-fossil_data_plot_set(
-    fossil_data_plot_t *plot,
-    fossil_data_id_t    key,
-    fossil_data_id_t    value
+/* Plot a line chart */
+int fossil_data_plot_line(
+    const void* y,
+    size_t count,
+    const char* type_id,
+    const char* title_id
 );
 
-/* ============================================================================
- * Data Binding
- * ============================================================================
- */
-
-fossil_data_status_t
-fossil_data_plot_bind(
-    fossil_data_plot_t        *plot,
-    const fossil_data_buffer_t *data
-);
-
-/* ============================================================================
- * Render
- * ============================================================================
- */
-
-/* target examples:
- *   "png"
- *   "svg"
- *   "ascii"
- *   "framebuffer"
- */
-fossil_data_status_t
-fossil_data_plot_render(
-    fossil_data_plot_t *plot,
-    fossil_data_id_t    target
+/* Plot a histogram */
+int fossil_data_plot_histogram(
+    const void* data,
+    size_t count,
+    const char* type_id,
+    size_t bins,
+    const char* title_id
 );
 
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef __cplusplus
 #include <string>
 
-namespace fossil {
-    
-    namespace data {
+namespace fossil::data {
 
+class Plot {
+public:
+    static int line(const void* y, size_t count, const std::string& type_id,
+                    const std::string& title_id);
+    static int histogram(const void* data, size_t count, const std::string& type_id,
+                         size_t bins, const std::string& title_id);
+};
 
-
-    } // namespace data
-
-} // namespace fossil
-
+} // namespace fossil::data
 #endif
 
 #endif /* FOSSIL_DATA_PLOT_H */
