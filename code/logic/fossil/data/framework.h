@@ -28,7 +28,6 @@
 // Include the necessary headers
 #include "transform.h"
 #include "series.h"
-#include "stats.h"
 #include "plot.h"
 #include "prob.h"
 #include "ml.h"
