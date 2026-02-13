@@ -26,80 +26,87 @@
 #define FOSSIL_DATA_TRANSFORM_H
 
 #include <stddef.h>
-#include "types.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* ============================================================================
- * Opaque Transform
- * ============================================================================
+/**
+ * @file fossil_data_transform.h
+ * @brief Data transformation utilities for feature engineering and preprocessing.
+ *
+ * This module provides scaling, normalization, and encoding operations for
+ * data arrays. Functions support a flexible type system using string IDs.
+ *
+ * Supported type string IDs:
+ *   - "i8", "i16", "i32", "i64"
+ *   - "u8", "u16", "u32", "u64"
+ *   - "f32", "f64"
+ *   - "cstr" (categorical strings)
+ *
+ * Supported method string IDs for scaling:
+ *   - "minmax": scales values to [0,1]
+ *   - "zscore": standard score normalization
+ *
+ * Supported method string IDs for encoding:
+ *   - "onehot": one-hot encoding for categorical values
+ *   - "label": label encoding
  */
 
-typedef struct fossil_data_transform fossil_data_transform_t;
-
-/* ============================================================================
- * Creation / Destruction
- * ============================================================================
- */
-
-/* id examples:
- *   "normalize"
- *   "standardize"
- *   "log"
- *   "fft"
- *   "rolling_mean"
- */
-fossil_data_transform_t *
-fossil_data_transform_create(fossil_data_id_t id);
-
-void
-fossil_data_transform_destroy(fossil_data_transform_t *transform);
-
-/* ============================================================================
- * Configuration
- * ============================================================================
- */
-
-/* key examples:
- *   "window"
- *   "epsilon"
- *   "axis"
- */
-fossil_data_status_t
-fossil_data_transform_set(
-    fossil_data_transform_t *transform,
-    fossil_data_id_t         key,
-    fossil_data_id_t         value
+/* Scale numeric data */
+int fossil_data_transform_scale(
+    const void* input,
+    void* output,
+    size_t count,
+    const char* type_id,      /* numeric type string ID */
+    const char* method_id     /* scaling method string ID */
 );
 
-/* ============================================================================
- * Execution
- * ============================================================================
- */
-
-fossil_data_status_t
-fossil_data_transform_apply(
-    fossil_data_transform_t *transform,
-    const fossil_data_buffer_t *input,
-    fossil_data_buffer_t       *output
+/* Encode categorical data */
+int fossil_data_transform_encode(
+    const void* input,
+    void* output,
+    size_t count,
+    const char* type_id,      /* "cstr" for strings */
+    const char* method_id     /* encoding method string ID */
 );
 
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef __cplusplus
 #include <string>
 
-namespace fossil {
-    
-    namespace data {
+namespace fossil::data {
 
+/**
+ * @brief Transform utility class (C++ interface)
+ *
+ * Supports type-safe scaling and encoding of numeric and categorical data.
+ */
+class Transform {
+public:
+    static int scale(
+        const void* input,
+        void* output,
+        size_t count,
+        const std::string& type_id,
+        const std::string& method_id
+    );
 
+    static int encode(
+        const void* input,
+        void* output,
+        size_t count,
+        const std::string& type_id,
+        const std::string& method_id
+    );
+};
 
-    } // namespace data
-
-} // namespace fossil
-
+} // namespace fossil::data
 #endif
 
 #endif /* FOSSIL_DATA_TRANSFORM_H */
