@@ -32,7 +32,6 @@ extern "C" {
 #endif
 
 /**
- * @file fossil_data_plot.h
  * @brief Lightweight plotting utilities.
  *
  * Supports line plots and histograms using terminal or ASCII-based visualization.
@@ -72,9 +71,14 @@ namespace fossil::data {
 class Plot {
 public:
     static int line(const void* y, size_t count, const std::string& type_id,
-                    const std::string& title_id);
+                    const std::string& title_id) {
+        return fossil_data_plot_line(y, count, type_id.c_str(), title_id.c_str());
+    }
+
     static int histogram(const void* data, size_t count, const std::string& type_id,
-                         size_t bins, const std::string& title_id);
+                         size_t bins, const std::string& title_id) {
+        return fossil_data_plot_line(data, count, type_id.c_str(), bins, title_id.c_str());
+    }
 };
 
 } // namespace fossil::data
