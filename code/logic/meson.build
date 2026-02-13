@@ -5,8 +5,11 @@ add_project_arguments('-D_POSIX_C_SOURCE=200112L', language: 'cpp')
 
 fossil_data_lib = library('fossil_data',
     files(
-        'matrix.c',
-        'stats.c'
+        'ml.c',
+        'series.c',
+        'prob.c',
+        'plot.c',
+        'transform.c'
     ),
     install: true,
     dependencies: [cc.find_library('m', required: false)],
