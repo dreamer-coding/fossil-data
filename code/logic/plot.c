@@ -24,185 +24,182 @@
  */
 #include "fossil/data/plots.h"
 
-#include <stdlib.h>
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdint.h>
 
-/* ============================================================================
- * Internal Plot Representation
- * ============================================================================
- */
+/* ---------------------------------------------------------
+ * Type helpers
+ * --------------------------------------------------------- */
 
-struct fossil_data_plot {
-    fossil_data_id_t type;
+static int fossil_data_plot_is_numeric(const char *type_id)
+{
+    if (!type_id) return 0;
 
-    /* config */
-    const char *title;
-    const char *xlabel;
-    const char *ylabel;
+    /* signed integers */
+    if (!strcmp(type_id,"i8")  ||
+        !strcmp(type_id,"i16") ||
+        !strcmp(type_id,"i32") ||
+        !strcmp(type_id,"i64"))
+        return 1;
 
-    size_t width;
-    size_t height;
+    /* unsigned integers */
+    if (!strcmp(type_id,"u8")  ||
+        !strcmp(type_id,"u16") ||
+        !strcmp(type_id,"u32") ||
+        !strcmp(type_id,"u64") ||
+        !strcmp(type_id,"size"))
+        return 1;
 
-    /* data */
-    const fossil_data_buffer_t *data;
-};
+    /* floats */
+    if (!strcmp(type_id,"f32") ||
+        !strcmp(type_id,"f64"))
+        return 1;
 
-/* ============================================================================
- * Helpers
- * ============================================================================
- */
+    /* logical */
+    if (!strcmp(type_id,"bool"))
+        return 1;
 
-static int fossil_data_id_eq(fossil_data_id_t a, fossil_data_id_t b) {
-    if (!a || !b) return 0;
-    return strcmp(a, b) == 0;
+    /* numeric encodings (interpretation hints) */
+    if (!strcmp(type_id,"hex") ||
+        !strcmp(type_id,"oct") ||
+        !strcmp(type_id,"bin"))
+        return 1;
+
+    return 0;
 }
 
-/* ============================================================================
- * Creation / Destruction
- * ============================================================================
- */
+static double fossil_data_plot_get_value(const void *data, size_t i, const char *type_id)
+{
+    /* signed integers */
+    if (!strcmp(type_id,"i8"))  return ((const int8_t*)data)[i];
+    if (!strcmp(type_id,"i16")) return ((const int16_t*)data)[i];
+    if (!strcmp(type_id,"i32")) return ((const int32_t*)data)[i];
+    if (!strcmp(type_id,"i64")) return (double)((const int64_t*)data)[i];
 
-fossil_data_plot_t *fossil_data_plot_create(fossil_data_id_t id) {
-    fossil_data_plot_t *plot = calloc(1, sizeof(*plot));
-    if (!plot) {
-        return NULL;
-    }
+    /* unsigned integers */
+    if (!strcmp(type_id,"u8"))  return ((const uint8_t*)data)[i];
+    if (!strcmp(type_id,"u16")) return ((const uint16_t*)data)[i];
+    if (!strcmp(type_id,"u32")) return ((const uint32_t*)data)[i];
+    if (!strcmp(type_id,"u64")) return (double)((const uint64_t*)data)[i];
+    if (!strcmp(type_id,"size"))return (double)((const size_t*)data)[i];
 
-    plot->type   = id;
-    plot->width  = 80;
-    plot->height = 20;
+    /* floats */
+    if (!strcmp(type_id,"f32")) return ((const float*)data)[i];
+    if (!strcmp(type_id,"f64")) return ((const double*)data)[i];
 
-    return plot;
+    /* bool */
+    if (!strcmp(type_id,"bool")) return ((const uint8_t*)data)[i] ? 1.0 : 0.0;
+
+    /* encoded numeric hints treated as integers */
+    if (!strcmp(type_id,"hex") ||
+        !strcmp(type_id,"oct") ||
+        !strcmp(type_id,"bin"))
+        return ((const int64_t*)data)[i];
+
+    return 0.0;
 }
 
-void fossil_data_plot_destroy(fossil_data_plot_t *plot) {
-    if (!plot) return;
-    free(plot);
-}
+/* ---------------------------------------------------------
+ * Line plot
+ * --------------------------------------------------------- */
 
-/* ============================================================================
- * Configuration
- * ============================================================================
- */
-
-fossil_data_status_t fossil_data_plot_set(
-    fossil_data_plot_t *plot,
-    fossil_data_id_t    key,
-    fossil_data_id_t    value
+int fossil_data_plot_line(
+    const void* y,
+    size_t count,
+    const char* type_id,
+    const char* title_id
 ) {
-    if (!plot || !key || !value) {
-        return FOSSIL_DATA_INVALID;
+    if (!y || !count || !fossil_data_plot_is_numeric(type_id))
+        return -1;
+
+    const size_t width  = 60;
+    const size_t height = 15;
+
+    double min = fossil_data_plot_get_value(y,0,type_id);
+    double max = min;
+
+    for (size_t i=1;i<count;i++) {
+        double v = fossil_data_plot_get_value(y,i,type_id);
+        if (v < min) min = v;
+        if (v > max) max = v;
     }
 
-    if (fossil_data_id_eq(key, "title")) {
-        plot->title = value;
-    }
-    else if (fossil_data_id_eq(key, "xlabel")) {
-        plot->xlabel = value;
-    }
-    else if (fossil_data_id_eq(key, "ylabel")) {
-        plot->ylabel = value;
-    }
-    else if (fossil_data_id_eq(key, "width")) {
-        plot->width = (size_t)atoi(value);
-    }
-    else if (fossil_data_id_eq(key, "height")) {
-        plot->height = (size_t)atoi(value);
-    }
-    else {
-        return FOSSIL_DATA_UNSUPPORTED;
-    }
+    double range = max - min;
+    if (range == 0) range = 1.0;
 
-    return FOSSIL_DATA_OK;
-}
+    printf("\n=== %s ===\n", title_id ? title_id : "line plot");
 
-/* ============================================================================
- * Data Binding
- * ============================================================================
- */
+    for (size_t row=0; row<height; row++) {
+        double threshold = max - (range * row / (height-1));
 
-fossil_data_status_t fossil_data_plot_bind(
-    fossil_data_plot_t        *plot,
-    const fossil_data_buffer_t *data) {
-    if (!plot || !data || !data->data) {
-        return FOSSIL_DATA_INVALID;
-    }
-
-    plot->data = data;
-    return FOSSIL_DATA_OK;
-}
-
-/* ============================================================================
- * ASCII Rendering (portable, zero deps)
- * ============================================================================
- */
-
-static fossil_data_status_t fossil_data_plot_render_ascii(fossil_data_plot_t *plot) {
-    size_t i;
-    fossil_data_real_t min = 0.0, max = 0.0;
-    fossil_data_real_t *values;
-
-    if (!plot->data) {
-        return FOSSIL_DATA_INVALID;
-    }
-
-    values = (fossil_data_real_t *)plot->data->data;
-
-    /* compute min/max */
-    min = max = values[0];
-    for (i = 1; i < plot->data->length; ++i) {
-        if (values[i] < min) min = values[i];
-        if (values[i] > max) max = values[i];
-    }
-
-    if (plot->title) {
-        printf("\n%s\n", plot->title);
-    }
-
-    for (size_t row = 0; row < plot->height; ++row) {
-        fossil_data_real_t threshold =
-            max - ((fossil_data_real_t)row / plot->height) * (max - min);
-
-        for (i = 0; i < plot->data->length && i < plot->width; ++i) {
-            if (values[i] >= threshold) {
-                putchar('#');
-            } else {
-                putchar(' ');
-            }
+        for (size_t col=0; col<width; col++) {
+            size_t idx = col * count / width;
+            double v = fossil_data_plot_get_value(y,idx,type_id);
+            putchar(v >= threshold ? '*' : ' ');
         }
         putchar('\n');
     }
 
-    if (plot->xlabel) {
-        printf("%s\n", plot->xlabel);
-    }
-
-    return FOSSIL_DATA_OK;
+    printf("min: %.3f  max: %.3f  n=%zu\n", min, max, count);
+    return 0;
 }
 
-/* ============================================================================
- * Render Dispatch
- * ============================================================================
- */
+/* ---------------------------------------------------------
+ * Histogram
+ * --------------------------------------------------------- */
 
-fossil_data_status_t fossil_data_plot_render(
-    fossil_data_plot_t *plot,
-    fossil_data_id_t    target) {
-    if (!plot || !target) {
-        return FOSSIL_DATA_INVALID;
+int fossil_data_plot_histogram(
+    const void* data,
+    size_t count,
+    const char* type_id,
+    size_t bins,
+    const char* title_id
+) {
+    if (!data || !count || bins == 0 || !fossil_data_plot_is_numeric(type_id))
+        return -1;
+
+    double min = fossil_data_plot_get_value(data,0,type_id);
+    double max = min;
+
+    for (size_t i=1;i<count;i++) {
+        double v = fossil_data_plot_get_value(data,i,type_id);
+        if (v < min) min = v;
+        if (v > max) max = v;
     }
 
-    if (fossil_data_id_eq(target, "ascii")) {
-        return fossil_data_plot_render_ascii(plot);
+    double range = max - min;
+    if (range == 0) range = 1.0;
+
+    size_t hist[bins];
+    for (size_t i=0;i<bins;i++) hist[i]=0;
+
+    for (size_t i=0;i<count;i++) {
+        double v = fossil_data_plot_get_value(data,i,type_id);
+        size_t b = (size_t)((v - min) / range * bins);
+        if (b >= bins) b = bins-1;
+        hist[b]++;
     }
 
-    /* future backends */
-    if (fossil_data_id_eq(target, "png") ||
-        fossil_data_id_eq(target, "svg") ||
-        fossil_data_id_eq(target, "framebuffer")) {
-        return FOSSIL_DATA_UNSUPPORTED;
+    size_t max_count = 0;
+    for (size_t i=0;i<bins;i++)
+        if (hist[i] > max_count) max_count = hist[i];
+    if (max_count == 0) max_count = 1;
+
+    printf("\n=== %s ===\n", title_id ? title_id : "histogram");
+
+    for (size_t i=0;i<bins;i++) {
+        double low  = min + (range * i / bins);
+        double high = min + (range * (i+1) / bins);
+
+        printf("[%8.3f – %8.3f] | ", low, high);
+
+        size_t bar = (hist[i] * 40) / max_count;
+        for (size_t j=0;j<bar;j++) putchar('#');
+
+        printf(" (%zu)\n", hist[i]);
     }
 
-    return FOSSIL_DATA_INVALID;
+    printf("min: %.3f  max: %.3f  n=%zu\n", min, max, count);
+    return 0;
 }
