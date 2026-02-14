@@ -128,7 +128,8 @@ int fossil_data_plot_line(
     double range = max - min;
     if (range == 0) range = 1.0;
 
-    printf("\n=== %s ===\n", title_id ? title_id : "line plot");
+    const char *plot_title = (title_id && *title_id) ? title_id : "line plot";
+    printf("\n=== %s ===\n", plot_title);
 
     for (size_t row=0; row<height; row++) {
         double threshold = max - (range * row / (height-1));
@@ -186,7 +187,8 @@ int fossil_data_plot_histogram(
         if (hist[i] > max_count) max_count = hist[i];
     if (max_count == 0) max_count = 1;
 
-    printf("\n=== %s ===\n", title_id ? title_id : "histogram");
+    const char *plot_title = (title_id && *title_id) ? title_id : "histogram";
+    printf("\n=== %s ===\n", plot_title);
 
     for (size_t i=0;i<bins;i++) {
         double low  = min + (range * i / bins);

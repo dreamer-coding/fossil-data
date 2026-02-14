@@ -49,7 +49,22 @@ extern "C" {
  * Model handles are opaque pointers managed by the library.
  */
 
-/* Train an ML model */
+/**
+ * @brief Train a machine learning model.
+ *
+ * This function trains a machine learning model using the provided input data and labels.
+ * The type of data and model are specified by string IDs. The resulting model is returned
+ * as an opaque handle through the model_handle pointer.
+ *
+ * @param X            Pointer to the input feature matrix (row-major order).
+ * @param y            Pointer to the target labels or values.
+ * @param rows         Number of samples (rows) in the input data.
+ * @param cols         Number of features (columns) in the input data.
+ * @param type_id      String ID specifying the data type ("i32", "i64", "f32", "f64").
+ * @param model_id     String ID specifying the model type ("linear_regression", etc.).
+ * @param model_handle Output pointer to the trained model handle (opaque pointer).
+ * @return             0 on success, non-zero on failure.
+ */
 int fossil_data_ml_train(
     const void* X,
     const void* y,
@@ -60,7 +75,20 @@ int fossil_data_ml_train(
     void** model_handle
 );
 
-/* Make predictions with a trained model */
+/**
+ * @brief Make predictions using a trained machine learning model.
+ *
+ * This function uses a previously trained model to make predictions on new input data.
+ * The predictions are written to the y_pred buffer.
+ *
+ * @param X            Pointer to the input feature matrix (row-major order).
+ * @param rows         Number of samples (rows) in the input data.
+ * @param cols         Number of features (columns) in the input data.
+ * @param y_pred       Output buffer for predicted values or labels.
+ * @param model_handle Opaque pointer to the trained model.
+ * @param type_id      String ID specifying the data type ("i32", "i64", "f32", "f64").
+ * @return             0 on success, non-zero on failure.
+ */
 int fossil_data_ml_predict(
     const void* X,
     size_t rows,
@@ -70,7 +98,15 @@ int fossil_data_ml_predict(
     const char* type_id
 );
 
-/* Free a trained model */
+/**
+ * @brief Free the resources associated with a trained machine learning model.
+ *
+ * This function releases all memory and resources held by a model previously
+ * created by fossil_data_ml_train.
+ *
+ * @param model_handle Opaque pointer to the trained model to be freed.
+ * @return             0 on success, non-zero on failure.
+ */
 int fossil_data_ml_free_model(void* model_handle);
 
 #ifdef __cplusplus
@@ -84,6 +120,21 @@ namespace fossil::data {
 
 class ML {
 public:
+    /**
+     * @brief Train a machine learning model (C++ wrapper).
+     *
+     * This static method wraps the C API fossil_data_ml_train, allowing C++ code to
+     * train a machine learning model using type-safe std::string parameters.
+     * Returns an opaque pointer to the trained model on success, or nullptr on failure.
+     *
+     * @param X        Pointer to the input feature matrix (row-major order).
+     * @param y        Pointer to the target labels or values.
+     * @param rows     Number of samples (rows) in the input data.
+     * @param cols     Number of features (columns) in the input data.
+     * @param type_id  String specifying the data type ("i32", "i64", "f32", "f64").
+     * @param model_id String specifying the model type ("linear_regression", etc.).
+     * @return         Opaque pointer to the trained model, or nullptr on failure.
+     */
     static void* train(
         const void* X,
         const void* y,
@@ -99,6 +150,21 @@ public:
         return (result == 0) ? model_handle : nullptr;
     }
 
+    /**
+     * @brief Make predictions using a trained machine learning model (C++ wrapper).
+     *
+     * This static method wraps the C API fossil_data_ml_predict, allowing C++ code to
+     * make predictions using a previously trained model. The predictions are written
+     * to the y_pred buffer.
+     *
+     * @param X            Pointer to the input feature matrix (row-major order).
+     * @param rows         Number of samples (rows) in the input data.
+     * @param cols         Number of features (columns) in the input data.
+     * @param y_pred       Output buffer for predicted values or labels.
+     * @param model_handle Opaque pointer to the trained model.
+     * @param type_id      String specifying the data type ("i32", "i64", "f32", "f64").
+     * @return             0 on success, non-zero on failure.
+     */
     static int predict(
         const void* X,
         size_t rows,
@@ -112,6 +178,14 @@ public:
         );
     }
 
+    /**
+     * @brief Free the resources associated with a trained machine learning model (C++ wrapper).
+     *
+     * This static method wraps the C API fossil_data_ml_free_model, releasing all memory
+     * and resources held by a model previously created by train().
+     *
+     * @param model_handle Opaque pointer to the trained model to be freed.
+     */
     static void free_model(void* model_handle) {
         fossil_data_ml_free_model(model_handle);
     }

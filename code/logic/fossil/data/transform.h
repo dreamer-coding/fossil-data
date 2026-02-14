@@ -34,28 +34,24 @@ extern "C" {
 #endif
 
 /**
- * @file fossil_data_transform.h
- * @brief Data transformation utilities for feature engineering and preprocessing.
- *
- * This module provides scaling, normalization, and encoding operations for
- * data arrays. Functions support a flexible type system using string IDs.
+ * @brief Scales numeric data using the specified method.
  *
  * Supported type string IDs:
  *   - "i8", "i16", "i32", "i64"
  *   - "u8", "u16", "u32", "u64"
  *   - "f32", "f64"
- *   - "cstr" (categorical strings)
  *
- * Supported method string IDs for scaling:
+ * Supported method string IDs:
  *   - "minmax": scales values to [0,1]
  *   - "zscore": standard score normalization
  *
- * Supported method string IDs for encoding:
- *   - "onehot": one-hot encoding for categorical values
- *   - "label": label encoding
+ * @param input     Pointer to input data array.
+ * @param output    Pointer to output data array (must be preallocated).
+ * @param count     Number of elements in the input/output arrays.
+ * @param type_id   String identifier for the numeric type.
+ * @param method_id String identifier for the scaling method.
+ * @return 0 on success, nonzero on error (e.g., unsupported type or method).
  */
-
-/* Scale numeric data */
 int fossil_data_transform_scale(
     const void* input,
     void* output,
@@ -64,7 +60,23 @@ int fossil_data_transform_scale(
     const char* method_id     /* scaling method string ID */
 );
 
-/* Encode categorical data */
+/**
+ * @brief Encodes categorical data using the specified encoding method.
+ *
+ * Supported type string IDs:
+ *   - "cstr" (categorical strings)
+ *
+ * Supported method string IDs:
+ *   - "onehot": one-hot encoding for categorical values
+ *   - "label": label encoding
+ *
+ * @param input     Pointer to input data array (array of strings).
+ * @param output    Pointer to output data array (must be preallocated).
+ * @param count     Number of elements in the input/output arrays.
+ * @param type_id   String identifier for the data type ("cstr").
+ * @param method_id String identifier for the encoding method.
+ * @return 0 on success, nonzero on error (e.g., unsupported type or method).
+ */
 int fossil_data_transform_encode(
     const void* input,
     void* output,
@@ -89,6 +101,19 @@ namespace fossil::data {
  */
 class Transform {
 public:
+    /**
+     * @brief Scales numeric data using the specified method (C++ interface).
+     *
+     * This static method wraps the C API function fossil_data_transform_scale,
+     * providing a type-safe C++ interface using std::string for type and method IDs.
+     *
+     * @param input     Pointer to input data array.
+     * @param output    Pointer to output data array (must be preallocated).
+     * @param count     Number of elements in the input/output arrays.
+     * @param type_id   String identifier for the numeric type (e.g., "f32", "i32").
+     * @param method_id String identifier for the scaling method (e.g., "minmax", "zscore").
+     * @return 0 on success, nonzero on error (e.g., unsupported type or method).
+     */
     static int scale(
         const void* input,
         void* output,
@@ -101,6 +126,19 @@ public:
         );
     }
 
+    /**
+     * @brief Encodes categorical data using the specified encoding method (C++ interface).
+     *
+     * This static method wraps the C API function fossil_data_transform_encode,
+     * providing a type-safe C++ interface using std::string for type and method IDs.
+     *
+     * @param input     Pointer to input data array (array of strings).
+     * @param output    Pointer to output data array (must be preallocated).
+     * @param count     Number of elements in the input/output arrays.
+     * @param type_id   String identifier for the data type ("cstr").
+     * @param method_id String identifier for the encoding method (e.g., "onehot", "label").
+     * @return 0 on success, nonzero on error (e.g., unsupported type or method).
+     */
     static int encode(
         const void* input,
         void* output,

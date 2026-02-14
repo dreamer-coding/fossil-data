@@ -37,12 +37,24 @@ extern "C" {
  * Supports line plots and histograms using terminal or ASCII-based visualization.
  *
  * Supported type string IDs:
- *   - "i32", "i64", "f32", "f64"
+ *   - "i8", "i16", "i32", "i64"
+ *   - "u8", "u16", "u32", "u64", "size"
+ *   - "f32", "f64"
+ *   - "bool"
+ *   - "hex", "oct", "bin"
  *
  * Title string IDs can be arbitrary cstrings describing the plot.
  */
 
-/* Plot a line chart */
+/**
+ * @brief Plot a line chart in the terminal or ASCII-based visualization.
+ *
+ * @param y        Pointer to the array of y-values to plot.
+ * @param count    Number of elements in the y array.
+ * @param type_id  String identifier for the data type ("i32", "i64", "f32", "f64").
+ * @param title_id String identifier for the plot title.
+ * @return         0 on success, non-zero on error.
+ */
 int fossil_data_plot_line(
     const void* y,
     size_t count,
@@ -50,7 +62,16 @@ int fossil_data_plot_line(
     const char* title_id
 );
 
-/* Plot a histogram */
+/**
+ * @brief Plot a histogram in the terminal or ASCII-based visualization.
+ *
+ * @param data     Pointer to the array of data to plot.
+ * @param count    Number of elements in the data array.
+ * @param type_id  String identifier for the data type ("i32", "i64", "f32", "f64").
+ * @param bins     Number of bins to use in the histogram.
+ * @param title_id String identifier for the plot title.
+ * @return         0 on success, non-zero on error.
+ */
 int fossil_data_plot_histogram(
     const void* data,
     size_t count,
@@ -68,13 +89,46 @@ int fossil_data_plot_histogram(
 
 namespace fossil::data {
 
+/**
+ * @brief Plot utility class (C++ interface)
+ *
+ * Provides static methods for creating line plots and histograms using a simple C++ interface.
+ * The methods wrap the underlying C API functions, allowing for type-safe string parameters
+ * and integration with C++ codebases.
+ */
 class Plot {
 public:
+
+    /*
+     * @brief Plot a line chart (C++ wrapper).
+     * This static method wraps the C API fossil_data_plot_line, allowing C++ code to
+     * create line plots using a simple interface. The y-values are provided as a pointer
+     * to an array, along with the count of elements and type information. The title_id can
+     * be any descriptive string for the plot title.
+     * @param y        Pointer to the array of y-values to plot.
+     * @param count    Number of elements in the y array.
+     * @param type_id  String identifier for the data type ("i32", "i64", "f32", "f64").
+     * @param title_id String identifier for the plot title.
+     * @return         0 on success, non-zero on error.
+     */
     static int line(const void* y, size_t count, const std::string& type_id,
                     const std::string& title_id) {
         return fossil_data_plot_line(y, count, type_id.c_str(), title_id.c_str());
     }
 
+    /*
+     * @brief Plot a histogram (C++ wrapper).
+     * This static method wraps the C API fossil_data_plot_histogram, allowing C++ code to
+     * create histograms using a simple interface. The data is provided as a pointer to an
+     * array, along with the count of elements, type information, and the number of bins.
+     * The title_id can be any descriptive string for the plot title.
+     * @param data     Pointer to the array of data to plot.
+     * @param count    Number of elements in the data array.
+     * @param type_id  String identifier for the data type ("i32", "i64", "f32", "f64").
+     * @param bins     Number of bins to use in the histogram.
+     * @param title_id String identifier for the plot title.
+     * @return         0 on success, non-zero on error.
+     */
     static int histogram(const void* data, size_t count, const std::string& type_id,
                          size_t bins, const std::string& title_id) {
         return fossil_data_plot_histogram(data, count, type_id.c_str(), bins, title_id.c_str());
