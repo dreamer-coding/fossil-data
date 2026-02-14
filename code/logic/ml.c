@@ -23,169 +23,265 @@
  * -----------------------------------------------------------------------------
  */
 #include "fossil/data/ml.h"
-
-#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
+#include <math.h>
 
-/* ---------------------------------------------------------
- * Type helpers
- * --------------------------------------------------------- */
+/* ============================================================
+   Internal model definitions
+   ============================================================ */
 
-static int fossil_data_plot_is_numeric(const char *type_id)
+typedef enum {
+    MODEL_LINEAR,
+    MODEL_LOGISTIC,
+    MODEL_KMEANS
+} fossil_ml_model_kind_t;
+
+typedef struct {
+    fossil_ml_model_kind_t kind;
+    size_t rows;
+    size_t cols;
+    double* weights;   /* used by regression */
+    double* centers;   /* used by kmeans */
+    size_t k;          /* clusters for kmeans */
+} fossil_ml_model_t;
+
+/* ============================================================
+   Helpers
+   ============================================================ */
+
+static int is_numeric_type(const char* t)
 {
-    return
-        !strcmp(type_id,"i8")   || !strcmp(type_id,"i16") ||
-        !strcmp(type_id,"i32")  || !strcmp(type_id,"i64") ||
-        !strcmp(type_id,"u8")   || !strcmp(type_id,"u16") ||
-        !strcmp(type_id,"u32")  || !strcmp(type_id,"u64") ||
-        !strcmp(type_id,"f32")  || !strcmp(type_id,"f64") ||
-        !strcmp(type_id,"size") ||
-        !strcmp(type_id,"bool") ||
-        !strcmp(type_id,"hex")  ||
-        !strcmp(type_id,"oct")  ||
-        !strcmp(type_id,"bin");
+    return t &&
+        (!strcmp(t,"i32") || !strcmp(t,"i64") ||
+         !strcmp(t,"f32") || !strcmp(t,"f64"));
 }
 
-/* Convert any supported numeric type to double */
-static double fossil_data_plot_get_value(
-    const void *data,
-    size_t i,
-    const char *type_id
-){
-    /* signed ints */
-    if (!strcmp(type_id,"i8"))   return ((const int8_t*)data)[i];
-    if (!strcmp(type_id,"i16"))  return ((const int16_t*)data)[i];
-    if (!strcmp(type_id,"i32"))  return ((const int32_t*)data)[i];
-    if (!strcmp(type_id,"i64"))  return (double)((const int64_t*)data)[i];
-
-    /* unsigned ints */
-    if (!strcmp(type_id,"u8"))   return ((const uint8_t*)data)[i];
-    if (!strcmp(type_id,"u16"))  return ((const uint16_t*)data)[i];
-    if (!strcmp(type_id,"u32"))  return ((const uint32_t*)data)[i];
-    if (!strcmp(type_id,"u64"))  return (double)((const uint64_t*)data)[i];
-
-    /* interpretation hints still read as integers */
-    if (!strcmp(type_id,"hex"))  return (double)((const uint64_t*)data)[i];
-    if (!strcmp(type_id,"oct"))  return (double)((const uint64_t*)data)[i];
-    if (!strcmp(type_id,"bin"))  return (double)((const uint64_t*)data)[i];
-
-    /* floats */
-    if (!strcmp(type_id,"f32"))  return ((const float*)data)[i];
-    if (!strcmp(type_id,"f64"))  return ((const double*)data)[i];
-
-    /* logical / meta */
-    if (!strcmp(type_id,"bool")) return ((const uint8_t*)data)[i] ? 1.0 : 0.0;
-    if (!strcmp(type_id,"size")) return (double)((const size_t*)data)[i];
-
+static double read_value(const void* data, size_t i, const char* t)
+{
+    if(!strcmp(t,"f32")) return ((const float*)data)[i];
+    if(!strcmp(t,"f64")) return ((const double*)data)[i];
+    if(!strcmp(t,"i32")) return ((const int*)data)[i];
+    if(!strcmp(t,"i64")) return ((const long long*)data)[i];
     return 0.0;
 }
 
-int fossil_data_plot_line(
+static void write_value(void* data, size_t i, const char* t, double v)
+{
+    if(!strcmp(t,"f32")) ((float*)data)[i]=(float)v;
+    else if(!strcmp(t,"f64")) ((double*)data)[i]=v;
+    else if(!strcmp(t,"i32")) ((int*)data)[i]=(int)v;
+    else if(!strcmp(t,"i64")) ((long long*)data)[i]=(long long)v;
+}
+
+/* dot product */
+static double dot(const double* a,const double* b,size_t n){
+    double s=0;
+    for(size_t i=0;i<n;i++) s+=a[i]*b[i];
+    return s;
+}
+
+/* sigmoid for logistic regression */
+static double sigmoid(double x){
+    return 1.0/(1.0+exp(-x));
+}
+
+/* ============================================================
+   TRAIN
+   ============================================================ */
+
+int fossil_data_ml_train(
+    const void* X,
     const void* y,
-    size_t count,
+    size_t rows,
+    size_t cols,
     const char* type_id,
-    const char* title_id
-){
-    if (!y || !type_id || count == 0)
-        return -1;
+    const char* model_id,
+    void** model_handle)
+{
+    if(!X||!rows||!cols||!type_id||!model_id||!model_handle) return -1;
+    if(!is_numeric_type(type_id)) return -2;
 
-    if (!fossil_data_plot_is_numeric(type_id))
-        return -2;
+    fossil_ml_model_t* m = calloc(1,sizeof(*m));
+    if(!m) return -3;
 
-    const size_t width  = 60;
-    const size_t height = 15;
+    m->rows=rows;
+    m->cols=cols;
 
-    double min = fossil_data_plot_get_value(y,0,type_id);
-    double max = min;
+    /* ---------- LINEAR REGRESSION ---------- */
+    if(!strcmp(model_id,"linear_regression")){
+        m->kind=MODEL_LINEAR;
+        m->weights=calloc(cols,sizeof(double));
+        if(!m->weights){ free(m); return -3; }
 
-    for (size_t i=1;i<count;i++) {
-        double v = fossil_data_plot_get_value(y,i,type_id);
-        if (v < min) min = v;
-        if (v > max) max = v;
-    }
-
-    double range = max - min;
-    if (range == 0) range = 1.0;
-
-    printf("\n=== %s ===\n", title_id ? title_id : "line plot");
-
-    for (size_t row=0; row<height; row++) {
-
-        double threshold = max - (range * row / (height-1));
-
-        for (size_t col=0; col<width; col++) {
-
-            size_t idx = col * count / width;
-            double v = fossil_data_plot_get_value(y,idx,type_id);
-
-            putchar(v >= threshold ? '*' : ' ');
+        /* simple gradient descent */
+        double lr=0.001;
+        for(int iter=0;iter<500;iter++){
+            for(size_t j=0;j<cols;j++){
+                double grad=0;
+                for(size_t i=0;i<rows;i++){
+                    double pred=0;
+                    for(size_t k=0;k<cols;k++)
+                        pred+=m->weights[k]*read_value(X,i*cols+k,type_id);
+                    double err=pred-read_value(y,i,type_id);
+                    grad+=err*read_value(X,i*cols+j,type_id);
+                }
+                m->weights[j]-=lr*grad/rows;
+            }
         }
-        putchar('\n');
     }
 
-    printf("min: %.3f  max: %.3f  n=%zu\n", min, max, count);
+    /* ---------- LOGISTIC REGRESSION ---------- */
+    else if(!strcmp(model_id,"logistic_regression")){
+        m->kind=MODEL_LOGISTIC;
+        m->weights=calloc(cols,sizeof(double));
+        if(!m->weights){ free(m); return -3; }
+
+        double lr=0.01;
+        for(int iter=0;iter<400;iter++){
+            for(size_t j=0;j<cols;j++){
+                double grad=0;
+                for(size_t i=0;i<rows;i++){
+                    double z=0;
+                    for(size_t k=0;k<cols;k++)
+                        z+=m->weights[k]*read_value(X,i*cols+k,type_id);
+                    double p=sigmoid(z);
+                    grad+=(p-read_value(y,i,type_id))
+                        *read_value(X,i*cols+j,type_id);
+                }
+                m->weights[j]-=lr*grad/rows;
+            }
+        }
+    }
+
+    /* ---------- KMEANS ---------- */
+    else if(!strcmp(model_id,"kmeans")){
+        m->kind=MODEL_KMEANS;
+        m->k=3; /* default cluster count */
+        m->centers=calloc(m->k*cols,sizeof(double));
+        if(!m->centers){ free(m); return -3; }
+
+        /* initialize centers using first k rows */
+        for(size_t c=0;c<m->k;c++)
+            for(size_t j=0;j<cols;j++)
+                m->centers[c*cols+j]=read_value(X,c*cols+j,type_id);
+
+        int iters=20;
+        int* labels=malloc(rows*sizeof(int));
+
+        for(int it=0;it<iters;it++){
+            /* assign */
+            for(size_t i=0;i<rows;i++){
+                double best=1e300;
+                int best_id=0;
+                for(size_t c=0;c<m->k;c++){
+                    double d=0;
+                    for(size_t j=0;j<cols;j++){
+                        double diff=
+                          read_value(X,i*cols+j,type_id)-
+                          m->centers[c*cols+j];
+                        d+=diff*diff;
+                    }
+                    if(d<best){best=d;best_id=c;}
+                }
+                labels[i]=best_id;
+            }
+
+            /* recompute centers */
+            memset(m->centers,0,sizeof(double)*m->k*cols);
+            int* counts=calloc(m->k,sizeof(int));
+
+            for(size_t i=0;i<rows;i++){
+                int c=labels[i];
+                counts[c]++;
+                for(size_t j=0;j<cols;j++)
+                    m->centers[c*cols+j]+=
+                        read_value(X,i*cols+j,type_id);
+            }
+
+            for(size_t c=0;c<m->k;c++){
+                if(counts[c]==0) continue;
+                for(size_t j=0;j<cols;j++)
+                    m->centers[c*cols+j]/=counts[c];
+            }
+            free(counts);
+        }
+        free(labels);
+    }
+    else{
+        free(m);
+        return -4;
+    }
+
+    *model_handle=m;
     return 0;
 }
 
-int fossil_data_plot_histogram(
-    const void* data,
-    size_t count,
-    const char* type_id,
-    size_t bins,
-    const char* title_id
-){
-    if (!data || !type_id || count == 0 || bins == 0)
-        return -1;
+/* ============================================================
+   PREDICT
+   ============================================================ */
 
-    if (!fossil_data_plot_is_numeric(type_id))
-        return -2;
+int fossil_data_ml_predict(
+    const void* X,
+    size_t rows,
+    size_t cols,
+    void* y_pred,
+    void* model_handle,
+    const char* type_id)
+{
+    if(!X||!y_pred||!model_handle||!type_id) return -1;
+    if(!is_numeric_type(type_id)) return -2;
 
-    double min = fossil_data_plot_get_value(data,0,type_id);
-    double max = min;
+    fossil_ml_model_t* m=model_handle;
 
-    for (size_t i=1;i<count;i++) {
-        double v = fossil_data_plot_get_value(data,i,type_id);
-        if (v < min) min = v;
-        if (v > max) max = v;
+    /* linear or logistic */
+    if(m->kind==MODEL_LINEAR || m->kind==MODEL_LOGISTIC){
+        for(size_t i=0;i<rows;i++){
+            double z=0;
+            for(size_t j=0;j<cols;j++)
+                z+=m->weights[j]*read_value(X,i*cols+j,type_id);
+
+            if(m->kind==MODEL_LOGISTIC)
+                z=sigmoid(z);
+
+            write_value(y_pred,i,type_id,z);
+        }
     }
 
-    double range = max - min;
-    if (range == 0) range = 1.0;
-
-    size_t hist[bins];
-    for (size_t i=0;i<bins;i++)
-        hist[i]=0;
-
-    for (size_t i=0;i<count;i++) {
-        double v = fossil_data_plot_get_value(data,i,type_id);
-        size_t b = (size_t)((v - min) / range * bins);
-        if (b >= bins) b = bins-1;
-        hist[b]++;
+    /* kmeans: output cluster index */
+    else if(m->kind==MODEL_KMEANS){
+        for(size_t i=0;i<rows;i++){
+            double best=1e300;
+            int best_id=0;
+            for(size_t c=0;c<m->k;c++){
+                double d=0;
+                for(size_t j=0;j<cols;j++){
+                    double diff=
+                        read_value(X,i*cols+j,type_id)-
+                        m->centers[c*cols+j];
+                    d+=diff*diff;
+                }
+                if(d<best){best=d;best_id=c;}
+            }
+            write_value(y_pred,i,type_id,best_id);
+        }
     }
+    else return -3;
 
-    size_t max_count = 0;
-    for (size_t i=0;i<bins;i++)
-        if (hist[i] > max_count) max_count = hist[i];
+    return 0;
+}
 
-    if (max_count == 0) max_count = 1;
+/* ============================================================
+   FREE
+   ============================================================ */
 
-    printf("\n=== %s ===\n", title_id ? title_id : "histogram");
+int fossil_data_ml_free_model(void* model_handle)
+{
+    if(!model_handle) return -1;
+    fossil_ml_model_t* m=model_handle;
 
-    for (size_t i=0;i<bins;i++) {
-
-        double low  = min + (range * i / bins);
-        double high = min + (range * (i+1) / bins);
-
-        printf("[%8.3f – %8.3f] | ", low, high);
-
-        size_t bar = (hist[i] * 40) / max_count;
-        for (size_t j=0;j<bar;j++)
-            putchar('#');
-
-        printf(" (%zu)\n", hist[i]);
-    }
-
-    printf("min: %.3f  max: %.3f  n=%zu\n", min, max, count);
+    free(m->weights);
+    free(m->centers);
+    free(m);
     return 0;
 }
