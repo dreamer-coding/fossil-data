@@ -22,7 +22,7 @@
  * Copyright (C) 2014-2025 Fossil Logic. All rights reserved.
  * -----------------------------------------------------------------------------
  */
-#include "fossil/data/plots.h"
+#include "fossil/data/plot.h"
 
 #include <stdio.h>
 #include <string.h>
