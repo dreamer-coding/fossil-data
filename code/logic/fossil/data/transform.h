@@ -95,7 +95,11 @@ public:
         size_t count,
         const std::string& type_id,
         const std::string& method_id
-    );
+    ) {
+        return fossil_data_transform_scale(
+            input, output, count, type_id.c_str(), method_id.c_str()
+        );
+    }
 
     static int encode(
         const void* input,
@@ -103,7 +107,12 @@ public:
         size_t count,
         const std::string& type_id,
         const std::string& method_id
-    );
+    ) {
+        return fossil_data_transform_encode(
+            input, output, count, type_id.c_str(), method_id.c_str()
+        );
+    }
+
 };
 
 } // namespace fossil::data

@@ -69,9 +69,14 @@ namespace fossil::data {
 
 class Series {
 public:
-    static int cumsum(const void* input, void* output, size_t count, const std::string& type_id);
+    static int cumsum(const void* input, void* output, size_t count, const std::string& type_id) {
+        return fossil_data_series_cumsum(input, output, count, type_id.c_str());
+    }
+
     static int rolling_mean(const void* input, void* output, size_t count,
-                            size_t window, const std::string& type_id);
+                            size_t window, const std::string& type_id) {
+        return fossil_data_series_rolling_mean(input, output, count, window, type_id.c_str());
+    }
 };
 
 } // namespace fossil::data

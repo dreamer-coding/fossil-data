@@ -91,7 +91,13 @@ public:
         size_t cols,
         const std::string& type_id,
         const std::string& model_id
-    );
+    ) {
+        void* model_handle = nullptr;
+        int result = fossil_data_ml_train(
+            X, y, rows, cols, type_id.c_str(), model_id.c_str(), &model_handle
+        );
+        return (result == 0) ? model_handle : nullptr;
+    }
 
     static int predict(
         const void* X,
@@ -100,9 +106,15 @@ public:
         void* y_pred,
         void* model_handle,
         const std::string& type_id
-    );
+    ) {
+        return fossil_data_ml_predict(
+            X, rows, cols, y_pred, model_handle, type_id.c_str()
+        );
+    }
 
-    static void free_model(void* model_handle);
+    static void free_model(void* model_handle) {
+        fossil_data_ml_free_model(model_handle);
+    }
 };
 
 } // namespace fossil::data

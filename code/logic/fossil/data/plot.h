@@ -77,8 +77,9 @@ public:
 
     static int histogram(const void* data, size_t count, const std::string& type_id,
                          size_t bins, const std::string& title_id) {
-        return fossil_data_plot_line(data, count, type_id.c_str(), bins, title_id.c_str());
+        return fossil_data_plot_histogram(data, count, type_id.c_str(), bins, title_id.c_str());
     }
+
 };
 
 } // namespace fossil::data

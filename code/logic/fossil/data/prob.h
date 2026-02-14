@@ -78,16 +78,37 @@ int fossil_data_prob_sample(
 #endif
 
 #ifdef __cplusplus
+
 #include <string>
+#include <limits>
 
 namespace fossil::data {
 
 class Prob {
 public:
-    static double mean(const void* data, size_t count, const std::string& type_id);
-    static double std(const void* data, size_t count, const std::string& type_id);
+    static double mean(const void* data, size_t count, const std::string& type_id) {
+        double result;
+        if (fossil_data_prob_mean(data, count, type_id.c_str(), &result) != 0) {
+            // Handle error (e.g., throw exception or return NaN)
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+        return result;
+    }
+
+    static double std(const void* data, size_t count, const std::string& type_id) {
+        double result;
+        if (fossil_data_prob_std(data, count, type_id.c_str(), &result) != 0) {
+            // Handle error (e.g., throw exception or return NaN)
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+        return result;
+    }
+
     static int sample(void* output, size_t count, const std::string& dist_id,
-                      const std::string& type_id, const void* params);
+                      const std::string& type_id, const void* params) {
+        return fossil_data_prob_sample(output, count, dist_id.c_str(), type_id.c_str(), params);
+    }
+
 };
 
 } // namespace fossil::data
