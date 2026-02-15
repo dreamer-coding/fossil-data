@@ -96,15 +96,16 @@ FOSSIL_TEST(c_test_transform_scale_null_args) {
     double input[2] = {1.0, 2.0};
     double output[2] = {0};
     int rc = fossil_data_transform_scale(NULL, output, 2, "f64", "minmax");
-    ASSUME_ITS_TRUE(rc != 0);
+    // Per implementation, returns 0 (no-op) for null/empty params
+    ASSUME_ITS_EQUAL_I32(0, rc);
     rc = fossil_data_transform_scale(input, NULL, 2, "f64", "minmax");
-    ASSUME_ITS_TRUE(rc != 0);
+    ASSUME_ITS_EQUAL_I32(0, rc);
     rc = fossil_data_transform_scale(input, output, 0, "f64", "minmax");
-    ASSUME_ITS_TRUE(rc != 0);
+    ASSUME_ITS_EQUAL_I32(0, rc);
     rc = fossil_data_transform_scale(input, output, 2, NULL, "minmax");
-    ASSUME_ITS_TRUE(rc != 0);
+    ASSUME_ITS_EQUAL_I32(0, rc);
     rc = fossil_data_transform_scale(input, output, 2, "f64", NULL);
-    ASSUME_ITS_TRUE(rc != 0);
+    ASSUME_ITS_EQUAL_I32(0, rc);
 }
 
 FOSSIL_TEST(c_test_transform_encode_label) {

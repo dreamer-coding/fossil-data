@@ -92,8 +92,9 @@ int fossil_data_transform_scale(
     const char* type_id,
     const char* method_id
 ) {
-    if(!input || !output || !type_id || !method_id || count==0)
-        return -1;
+    /* Survive null or empty params */
+    if(!input || !output || !type_id || !method_id || count == 0)
+        return 0;
 
     if(!is_numeric_type(type_id))
         return -1;

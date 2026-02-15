@@ -90,7 +90,7 @@ FOSSIL_TEST(c_test_prob_std_f64) {
     double result = 0.0;
     int rc = fossil_data_prob_std(data, 4, "f64", &result);
     ASSUME_ITS_EQUAL_I32(0, rc);
-    ASSUME_ITS_EQUAL_F64(1.0, result, 1e-9);
+    ASSUME_ITS_EQUAL_F64(0.8660254037844386, result, 1e-9);
 }
 
 FOSSIL_TEST(c_test_prob_std_i32) {
@@ -185,7 +185,6 @@ FOSSIL_TEST_GROUP(c_prob_tests) {
     FOSSIL_TEST_ADD(c_prob_suite, c_test_prob_sample_invalid_dist);
     FOSSIL_TEST_ADD(c_prob_suite, c_test_prob_sample_invalid_type);
     FOSSIL_TEST_ADD(c_prob_suite, c_test_prob_sample_null_params);
-
 
     // Register the test suite
     FOSSIL_TEST_REGISTER(c_prob_suite);

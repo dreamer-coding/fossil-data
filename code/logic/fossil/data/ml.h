@@ -33,18 +33,25 @@ extern "C" {
 #endif
 
 /**
- * @file fossil_data_ml.h
  * @brief Machine learning utilities for training and inference.
  *
- * Supports basic ML tasks such as regression, classification, and clustering.
+ * Implements basic ML tasks (regression, classification, clustering) using internal model logic.
+ *
+ * Internal model definitions:
+ *   - fossil_ml_model_kind_t: MODEL_LINEAR, MODEL_LOGISTIC, MODEL_KMEANS
+ *   - fossil_ml_model_t: stores model kind, shape, weights (regression), centers (kmeans), cluster count
  *
  * Supported type string IDs:
- *   - "i32", "i64", "f32", "f64"
+ *   - "i8", "i16", "i32", "i64"
+ *   - "u8", "u16", "u32", "u64", "size"
+ *   - "f32", "f64"
+ *   - "bool"
+ *   - "hex", "oct", "bin"
  *
  * Supported model string IDs:
- *   - "linear_regression"
- *   - "logistic_regression"
- *   - "kmeans"
+ *   - "linear_regression" (MODEL_LINEAR)
+ *   - "logistic_regression" (MODEL_LOGISTIC)
+ *   - "kmeans" (MODEL_KMEANS)
  *
  * Model handles are opaque pointers managed by the library.
  */
