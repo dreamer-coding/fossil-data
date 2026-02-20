@@ -29,14 +29,14 @@
 #include <limits.h>
 #include <stdio.h>
 
-static size_t type_size(const char* type_id) {
-    if (strcmp(type_id, "i8") == 0 || strcmp(type_id, "u8") == 0 || strcmp(type_id, "bool") == 0) return 1;
-    if (strcmp(type_id, "i16") == 0 || strcmp(type_id, "u16") == 0) return 2;
-    if (strcmp(type_id, "i32") == 0 || strcmp(type_id, "u32") == 0 || strcmp(type_id, "f32") == 0) return 4;
-    if (strcmp(type_id, "i64") == 0 || strcmp(type_id, "u64") == 0 || strcmp(type_id, "size") == 0 || strcmp(type_id, "f64") == 0) return 8;
-    if (strcmp(type_id, "hex") == 0 || strcmp(type_id, "oct") == 0 || strcmp(type_id, "bin") == 0) return sizeof(uint64_t); // treat as u64
-    return 0; // unknown type
-}
+// static size_t type_size(const char* type_id) {
+//     if (strcmp(type_id, "i8") == 0 || strcmp(type_id, "u8") == 0 || strcmp(type_id, "bool") == 0) return 1;
+//     if (strcmp(type_id, "i16") == 0 || strcmp(type_id, "u16") == 0) return 2;
+//     if (strcmp(type_id, "i32") == 0 || strcmp(type_id, "u32") == 0 || strcmp(type_id, "f32") == 0) return 4;
+//     if (strcmp(type_id, "i64") == 0 || strcmp(type_id, "u64") == 0 || strcmp(type_id, "size") == 0 || strcmp(type_id, "f64") == 0) return 8;
+//     if (strcmp(type_id, "hex") == 0 || strcmp(type_id, "oct") == 0 || strcmp(type_id, "bin") == 0) return sizeof(uint64_t); // treat as u64
+//     return 0; // unknown type
+// }
 
 int fossil_data_tensor_elements(const size_t* shape, size_t rank, size_t* out_elements) {
     if (!shape || !out_elements) return -1;
