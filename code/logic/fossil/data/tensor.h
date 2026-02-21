@@ -151,7 +151,8 @@ int fossil_data_tensor_slice(
 #ifdef __cplusplus
 #include <string>
 
-namespace fossil::data {
+namespace fossil {
+namespace data {
 
 /**
  * @brief Tensor helper utilities (C++ wrapper)
@@ -159,10 +160,35 @@ namespace fossil::data {
 class Tensor {
 public:
 
+    /**
+     * @brief Calculate total number of elements in a tensor.
+     * 
+     * Multiplies all dimensions in the shape array to determine
+     * the total element count for memory allocation.
+     * 
+     * @param shape        Pointer to dimension array.
+     * @param rank         Number of dimensions.
+     * @param out_elements Output parameter for total element count.
+     * @return             0 on success, non-zero on error.
+     */
     static int elements(const size_t* shape, size_t rank, size_t* out_elements) {
         return fossil_data_tensor_elements(shape, rank, out_elements);
     }
 
+    /**
+     * @brief Find minimum and maximum values in a tensor.
+     * 
+     * Scans all elements in the tensor data buffer and identifies
+     * the smallest and largest values according to the specified type.
+     * Output buffers must be large enough for the type.
+     * 
+     * @param data        Tensor buffer containing element data.
+     * @param count       Total number of elements in the tensor.
+     * @param type_id     Fossil type string identifier (e.g., "i32", "f64").
+     * @param out_min     Output buffer for minimum value (same type as data).
+     * @param out_max     Output buffer for maximum value (same type as data).
+     * @return            0 on success, non-zero on error.
+     */
     static int minmax(const void* data, size_t count,
                       const std::string& type_id,
                       void* out_min, void* out_max) {
@@ -170,6 +196,19 @@ public:
             data, count, type_id.c_str(), out_min, out_max);
     }
 
+    /**
+     * @brief Calculate the arithmetic mean of all tensor elements.
+     * 
+     * Computes the average value across the entire tensor.
+     * Result is always returned as double (f64) for numerical stability
+     * regardless of input data type.
+     * 
+     * @param data      Tensor buffer containing element data.
+     * @param count     Total number of elements to average.
+     * @param type_id   Fossil type string identifier (e.g., "i32", "f64").
+     * @param out_mean  Output parameter for the mean as double.
+     * @return          0 on success, non-zero on error.
+     */
     static int mean(const void* data, size_t count,
                     const std::string& type_id,
                     double* out_mean) {
@@ -177,6 +216,21 @@ public:
             data, count, type_id.c_str(), out_mean);
     }
 
+    /**
+     * @brief Reduce tensor along a single axis by summing.
+     * 
+     * Sums elements along the specified axis, reducing dimensionality by one.
+     * For example, reducing a 3x4 matrix along axis 0 produces a 4-element vector.
+     * Output buffer must be preallocated with correct size for the reduced shape.
+     * 
+     * @param data       Tensor buffer containing element data.
+     * @param shape      Array describing tensor dimensions.
+     * @param rank       Number of dimensions in the tensor.
+     * @param axis       Dimension axis to reduce (0-indexed).
+     * @param type_id    Fossil type string identifier (e.g., "i32", "f64").
+     * @param out_result Output buffer for the reduced tensor.
+     * @return           0 on success, non-zero on error.
+     */
     static int reduce_sum(const void* data,
                           const size_t* shape,
                           size_t rank,
@@ -187,6 +241,22 @@ public:
             data, shape, rank, axis, type_id.c_str(), out_result);
     }
 
+    /**
+     * @brief Extract a contiguous sub-tensor (slice) from a tensor.
+     * 
+     * Copies a rectangular region from the source tensor defined by
+     * starting offsets and extent sizes for each dimension.
+     * Output buffer must be preallocated with sufficient space.
+     * 
+     * @param data       Tensor buffer containing source element data.
+     * @param shape      Array describing source tensor dimensions.
+     * @param rank       Number of dimensions in the tensor.
+     * @param offsets    Starting indices for the slice in each dimension.
+     * @param extents    Size of the slice in each dimension.
+     * @param type_id    Fossil type string identifier (e.g., "i32", "f64").
+     * @param out_slice  Output buffer for the extracted slice data.
+     * @return           0 on success, non-zero on error.
+     */
     static int slice(const void* data,
                      const size_t* shape,
                      size_t rank,
@@ -200,7 +270,8 @@ public:
     }
 };
 
-} // namespace fossil::data
+} // namespace data
+} // namespace fossil
 #endif
 
 #endif /* FOSSIL_DATA_TENSOR_H */
